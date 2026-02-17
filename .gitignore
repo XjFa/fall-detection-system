@@ -1,0 +1,22 @@
+# Ignore specific processed data files
+data/processed_test.csv
+data/processed_train.csv
+
+# Ignore results folder
+results/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# VS Code
+.vscode/
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# Virtual environments
+venv/
+.env/
