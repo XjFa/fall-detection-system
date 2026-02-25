@@ -1,111 +1,118 @@
 # app.py
 import streamlit as st
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import joblib
-import time
-from animation.stick_figure import draw_stick_figure_3d
+from models.inference import predict_all
+from models.preprocessing import preprocess_pipeline
 
-# -----------------------------
-# Page config
-# -----------------------------
-st.set_page_config(page_title="🧍 Stick-Figure Fall Detection", layout="centered")
-st.title("🧍 Fall Detection Animation (3D)")
+st.set_page_config(page_title="Fall Detection Demo", layout="wide")
+st.title("Fall Detection Demo (Sliding Window Detection)")
 
-# -----------------------------
-# Load trained model bundle
-# -----------------------------
-bundle = joblib.load("results/best_fall_model.pkl")
-model = bundle["model"]
-scaler = bundle["scaler"]
-feature_cols = bundle["feature_cols"]
-FALL_STATE = bundle["fall_state"]
+# ----------------------------
+# Sliding window helper
+# ----------------------------
+def predict_snippets(X_seq, window_size=100, step_size=50):
+    results = []
 
-# -----------------------------
-# Sidebar controls: only x, y, z
-# -----------------------------
-st.sidebar.header("Person Position in Room")
-x = st.sidebar.slider("X (Left/Right)", -5.0, 5.0, 0.0, 0.01)
-y = st.sidebar.slider("Y (Forward/Back)", -5.0, 5.0, 0.0, 0.01)
-z = st.sidebar.slider("Z (Height)", 0.0, 2.0, 1.0, 0.01)
+    for start in range(0, len(X_seq) - window_size + 1, step_size):
+        end = start + window_size
+        window = X_seq[start:end]
 
-# Start / Stop animation buttons
-if 'animating' not in st.session_state:
-    st.session_state['animating'] = False
+        pred = predict_all(window)
 
-start = st.sidebar.button("▶ Start Animation", key="start_btn")
-stop  = st.sidebar.button("⏹ Stop Animation", key="stop_btn")
+        results.append({
+            "start": start,
+            "end": end,
+            "lstm_prob": pred["lstm"]["fall_probability"],
+            "lstm_pred": pred["lstm"]["prediction"],
+            "hmm_pred": pred["hmm"]["prediction"]
+        })
 
-if start:
-    st.session_state['animating'] = True
-if stop:
-    st.session_state['animating'] = False
+    return pd.DataFrame(results)
 
-# -----------------------------
-# Placeholder and figure
-# -----------------------------
-placeholder = st.empty()
-fig = plt.figure(figsize=(6,6))
-ax = fig.add_subplot(111, projection='3d')
 
-# Frame counter
-if 't' not in st.session_state:
-    st.session_state['t'] = 0
+# ----------------------------
+# Load dataset
+# ----------------------------
+file_path = "data/ConfLongDemo_JSI.txt"
+df, X_sequences, y_sequences, groups, feature_cols = preprocess_pipeline(file_path)
 
-# Walking parameters
-step_amp = 0.15   # how far legs move forward/back
-step_speed = 0.3  # speed of leg oscillation
-sway_amp = 0.05   # chest/head side sway
+# Keep only sequences containing falling
+fall_seq_indices = [
+    i for i, y_seq in enumerate(y_sequences)
+    if "falling" in y_seq
+]
 
-# -----------------------------
-# Animation loop
-# -----------------------------
-while st.session_state['animating']:
-    t = st.session_state['t']
+fall_sequences = {groups[i]: X_sequences[i] for i in fall_seq_indices}
 
-    # -----------------------------
-    # Animate legs (walking)
-    # -----------------------------
-    left_leg_z = -1.0 + step_amp * np.sin(step_speed * t)
-    right_leg_z = -1.0 + step_amp * np.sin(step_speed * t + np.pi)  # opposite phase
+# ----------------------------
+# Sequence selection
+# ----------------------------
+seq_choice = st.selectbox(
+    "Choose a falling sequence",
+    ["none"] + list(fall_sequences.keys())
+)
 
-    # Slight sway for chest/head
-    sway = sway_amp * np.sin(step_speed * t)
+sequence_array = None
 
-    # Compute joint positions relative to x, y, z
-    belt_pos    = np.array([x, y, z])
-    chest_pos   = belt_pos + np.array([0.0 + sway, 0.0, 0.2])
-    head_pos    = belt_pos + np.array([0.0 + sway, 0.0, 0.7])
-    ankle_l_pos = belt_pos + np.array([-0.15, 0.0, left_leg_z])
-    ankle_r_pos = belt_pos + np.array([ 0.15, 0.0, right_leg_z])
+if seq_choice != "none":
+    sequence_array = fall_sequences[seq_choice]
+    st.success(f"Loaded '{seq_choice}' — shape {sequence_array.shape}")
 
-    # -----------------------------
-    # Build model input (x, y, z only)
-    # -----------------------------
-    frame_dict = {"x": x, "y": y, "z": z}
-    for col in feature_cols:
-        if col not in ["x","y","z"]:
-            frame_dict[col] = 0.0  # set remaining sensors to 0
+# ----------------------------
+# CSV upload
+# ----------------------------
+uploaded_file = st.file_uploader(
+    "Or upload your sensor CSV (12 columns: x,y,z for 4 sensors)", type="csv"
+)
 
-    X_frame = pd.DataFrame([frame_dict])[feature_cols]
+if uploaded_file:
+    df_uploaded = pd.read_csv(uploaded_file)
+    sequence_array = df_uploaded.values
+    st.success(f"Uploaded CSV with shape {sequence_array.shape}")
 
-    # Scale positions
-    if hasattr(scaler, "mean_"):
-        X_frame[["x","y","z"]] = scaler.transform(X_frame[["x","y","z"]])
+# ----------------------------
+# Window controls
+# ----------------------------
+if sequence_array is not None:
 
-    # Compute fall probability
-    _, posteriors = model.score_samples(X_frame.values)
-    fall_prob = float(posteriors[:, FALL_STATE][0])
+    st.subheader("Sliding Window Settings")
 
-    # Draw stick figure
-    draw_stick_figure_3d(ax, head_pos, chest_pos, belt_pos, ankle_l_pos, ankle_r_pos, fall_prob)
-    placeholder.pyplot(fig)
+    col1, col2 = st.columns(2)
 
-    # Increment frame
-    st.session_state['t'] += 1
-    time.sleep(0.05)
+    with col1:
+        window_size = st.slider("Window Size (timesteps)", 50, 300, 100)
 
-    # Stop condition
-    if not st.session_state['animating']:
-        break
+    with col2:
+        step_size = st.slider("Step Size", 10, 150, 50)
+
+# ----------------------------
+# Run detection
+# ----------------------------
+if st.button("Run Sliding Window Detection") and sequence_array is not None:
+
+    snippet_df = predict_snippets(sequence_array, window_size, step_size)
+
+    st.subheader("Fall Probability Over Time (LSTM)")
+    st.line_chart(snippet_df["lstm_prob"])
+
+    st.subheader("Detected Windows")
+    st.dataframe(snippet_df)
+
+    # Show high-risk windows
+    high_risk = snippet_df[snippet_df["lstm_pred"] == "falling"]
+
+    st.subheader("⚠ High Risk Windows (LSTM)")
+    if len(high_risk) > 0:
+        st.dataframe(high_risk)
+    else:
+        st.success("No fall detected in any window.")
+
+    st.markdown("---")
+
+    st.subheader("HMM Window Predictions")
+    hmm_counts = snippet_df["hmm_pred"].value_counts()
+    st.bar_chart(hmm_counts)
+
+    st.markdown("### Demo Ground Truth")
+    st.write("True label: falling (demo sequence contains fall)")

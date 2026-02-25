@@ -2,16 +2,17 @@
 
 ## Overview
 
-Falls are a leading cause of injury among elderly people living independently.  
-This project implements a **data-driven fall detection system** using **pre-recorded sensor data** from smart home experiments.  
+Falls are a leading cause of injury among elderly individuals living independently.
 
-The system simulates a **smart home monitoring setup**:
+This project implements a data-driven fall detection system using motion sensor data collected from a smart home environment.
 
-- **Input:** X/Y/Z motion data from pre-recorded sensors attached to chest, belt, and ankles of test participants.  
-- **Backend:** Bayesian network model predicts the probability of a fall event, handling missing or noisy data.  
-- **Frontend:** Interactive stick-figure animation visualizes motion and highlights fall events by collapsing the figure when the fall probability exceeds a threshold.  
+Instead of relying on a single classification model, the system compares two different sequence modeling approaches:
 
-**Goal:** Demonstrate a realistic fall detection system for elderly safety using pre-recorded sensor data, providing a foundation for smart home monitoring and early-warning systems.
+**Hidden Markov Models (HMM)** – generative probabilistic model
+
+**LSTM (Long Short-Term Memory network)** – deep learning sequence model
+
+The frontend provides an interactive Streamlit dashboard that performs sliding-window fall detection, visualizing fall probability over time.
 
 ---
 
@@ -45,64 +46,113 @@ The dataset is a refactored version of the [UCI Localization Data for Person Act
 
 ## Project Structure
 ```
-fall_detection_project/
-├── data/                     # CSV datasets
-│   ├── train/                # Training data (data_1.csv – data_19.csv)
-│   └── test/                 # Test data (data_20.csv – data_24.csv)
-├── notebooks/                # Jupyter notebooks for data exploration and preprocessing
-│   └── data_processing.ipynb
-├── animation/                # Stick-figure animation code
+project_root/
+│
+├── data/
+│   └── ConfLongDemo_JSI.txt
+│
+├── model/
 │   ├── __init__.py
-│   └── stick_figure.py
-├── results/
-│   └── fall_detection_model.pkl   # Trained model saved here
-├── app.py                    # Streamlit frontend integrating animation and model
-├── requirements.txt          # Python dependencies
-└── README.md                 # Project README
+│   ├── preprocessing.py
+│   ├── inference.py
+│   │
+│   ├── hmm/
+│   │   ├── __init__.py
+│   │   └── train.py
+│   │
+│   ├── lstm/
+│   │   ├── __init__.py
+│   │   ├── model.py
+│   │   └── train.py
+│
+├── app.py
+├── requirements.txt
+└── README.md
 ```
 
 ---
 
-## Features
+## Backend Models
 
-1. **Data Preprocessing:**  
-   - Load CSVs from train/test folders  
-   - Explore X/Y/Z sensor data and anomalies  
-   - Aggregate per-person observations for model training
+1. **LSTM Model:**  
+   - Sequence-aware neural network
 
-2. **Bayesian Network Modeling:**  
-   - Handles incomplete data via probabilistic inference  
-   - Computes fall probabilities for each observation  
-   - Trained on the 20-person training dataset, validated on 5-person test set
+   - Binary classification: falling vs non-fall
 
-3. **Interactive Animation Frontend:**  
-   - Stick-figure visual representation of the person using sensor data  
-   - Head, chest, belt, and ankle joints displayed  
-   - Dynamic animation of X/Y/Z positions  
-   - Fall probability triggers a **collapse animation** (head and chest drop, color turns red)
+   - Uses sigmoid probability output
 
-4. **Integration:**  
-   - Frontend takes live or pre-recorded X/Y/Z inputs  
-   - Backend Bayesian model predicts fall probability  
-   - Frontend animates motion and highlights fall events in real-time
+   - Optimized decision threshold
+
+   - Trained using full participant sequences
+
+2. **HMM Model**  
+   - One Gaussian HMM per activity
+
+   - Diagonal covariance
+
+   - Sequence likelihood comparison
+
+   - Softmax normalization for probability comparison
+
+
+---
+## Detection Method
+Instead of classifying entire sequences, the system uses: **Sliding Window Detection**
+
+   - Window size (default: 100 timesteps)
+
+   - Step size (default: 50 timesteps)
+
+   - Each window is independently classified
+
+  -  Produces probability curve over time
+
+   This mimics real-world wearable fall detection systems.
+
 
 ---
 
-## Usage
+## Running the Application
 
 1. **Install dependencies:**
 
 ```bash
 pip install -r requirements.txt
 ```
+2. **Models training (Run only once if not trained):**
 
-2. **Run the Streamlit app:**
+- Train hmm model
+```bash
+python -m models.hmm.train
+```
+
+- Train lstm model - This might take a long time
+```bash
+python -m models.lstm.train
+```
+
+3. **Run the Streamlit app:**
 
 ```bash
 streamlit run app.py
 ```
 
-3. **Interact with the animation:**
-   - Use sidebar sliders to simulate X/Y/Z movements
-   - Observe the stick figure collapse when the fall probability exceeds the threshold
-   - Switch between example motions or manual input
+4. **Interact with the animation:**
+
+   The dashboard allows:
+
+      - Selecting participant sequences
+
+      - Uploading custom CSV sensor data
+
+      - Adjusting window size and step size
+
+      - Running sliding window detection
+
+   Visualizing:
+
+      - LSTM fall probability over time
+
+      - Detected fall windows
+
+      - HMM activity predictions
