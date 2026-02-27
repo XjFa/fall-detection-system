@@ -20,3 +20,14 @@ __pycache__/
 # Virtual environments
 venv/
 .env/
+
+# Model artifacts
+*.pkl
+*.pt
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Streamlit cache
+.streamlit/
