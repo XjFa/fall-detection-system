@@ -94,6 +94,15 @@ project_root/
 
    - Softmax normalization for probability comparison
 
+3. **Random Forest (RF) + HMM Smoother**
+   - Random Forest directly learns the discriminative boundary P(activity | features)
+     
+   - Addresses the core limitation of pure generative HMM approaches of modelling P(features | activity)
+
+4. **Hidden Semi-Markov Model (HSMM)**
+   - Selected for fall detection
+     
+   - Incorporates explicit duration modelling
 
 ---
 ## Detection Method
@@ -111,6 +120,49 @@ Instead of classifying entire sequences, the system uses: **Sliding Window Detec
 
 
 ---
+## Exploratory Data Analysis
+
+
+
+
+---
+## Model Results & Interpretations
+1. **Baseline Hidden Markov Model**
+
+   
+2. **Activity-Level 12D HMM Model**
+
+
+3. **Random Forest (RF) + HMM Smoother**
+<img width="604" height="382" alt="Screenshot 2026-03-03 080343" src="https://github.com/user-attachments/assets/3a785ecd-66a8-4905-b797-09d811c173db" />
+<img width="630" height="450" alt="Screenshot 2026-03-03 080356" src="https://github.com/user-attachments/assets/bf71e785-f12a-46ea-bb5a-d7d8fed2d7eb" />
+
+   - Achieved the highest overall accuracy of 0.85 and macro F1 of 0.74 across all tested models, outperforming the best previous pure HMM (12D model, 0.72 accuracy) by a meaningful margin.
+   - The HMM smoothing layer contributed a +0.02 accuracy gain over RF alone (0.828 → 0.847) by penalising physically implausible frame-to-frame transitions
+   - Confirms that temporal context adds value on top of frame-level classification
+   - Walking and sitting are classified with high reliability (F1 0.93 and 0.92 respectively), reflecting that these activities have distinctive, consistent sensor signatures across subjects
+   - Falling remains the weakest class at F1 0.48, with recall of only 0.33 — meaning the model misses roughly two-thirds of actual fall events at the frame level, which is a critical limitation for a fall detection system where false negatives carry high safety cost
+   - The precision-recall imbalance for falling (precision 0.86, recall 0.33) suggests the model is conservative: when it predicts a fall it is usually correct, but it fails to flag the majority of actual falls, likely because falls occupy very few frames relative to the total dataset.
+
+4. **Hidden Semi-Markov Model**
+<img width="606" height="327" alt="Screenshot 2026-03-03 080529" src="https://github.com/user-attachments/assets/3e1893e1-6a02-4fa4-927f-065b62e8bc00" />
+
+   - Despite having a low overall accuracy of 0.44, the HSMM achieved the highest falling recall of 0.93 and falling F1 of 0.78 across all tested models — outperforming the RF + HMM Smoother on the most safety-critical class by a substantial margin
+   - This strength is directly attributable to the duration prior: the model penalises assigning "falling" to long, stable chunks, concentrating fall predictions on brief high-jerk segments where true falls occur
+   - The model's poor performance on other classes, such as lying (F1 0.00) and sitting (F1 0.00), indicates that the duration distributions for static activities overlap heavily, causing the HSMM to misclassify these consistently — a known failure mode when activity durations are variable across subjects
+
+---
+
+## Deployment Strategy
+- Across all models tested, falling consistently had the lowest or near-lowest F1, which reflects the class's inherent difficulty: it is the rarest activity, has the shortest duration, and its sensor signature partially overlaps with transitional activities like standing up from lying
+- The RF + HMM and HSMM models represent a fundamental tradeoff: the prior optimises overall accuracy and is well-suited for general activity recognition, while the HSMM optimises fall-specific recall and is better suited as a safety-critical alerting system where missing a fall is more costly than a false alarm
+- We believe it's best to combine both for practical deployment: **use the HSMM's falling probability as a dedicated fall alert trigger while using the RF + HMM Smoother for overall activity state estimation**
+
+
+
+---
+
+
 
 ## Running the Application
 
