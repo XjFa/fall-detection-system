@@ -69,6 +69,32 @@ project_root/
 ├── requirements.txt
 └── README.md
 ```
+---
+## Data Preprocessing
+
+**General Preprocessing Steps For All Models:**
+- Data Loading: Loaded the dataset from "ConfLongDemo_JSI.txt" resulting in a DataFrame of shape (164860, 8).
+- Column Naming: Assigned descriptive column names: sequence_name (participant/session ID, e.g., A01–E05), tag_id (sensor ID), timestamp (numeric unique timestamp), date_time (formatted date), x (x-coordinate acceleration), y (y-coordinate acceleration), z (z-coordinate acceleration), and activity (label, e.g., "walking", "falling").
+- Type Conversions: Converted date_time to pandas datetime format using pd.to_datetime with format "%d.%m.%Y %H:%M:%S:%f". Converted x, y, and z columns to float type for numerical operations.
+- Sorting and Indexing: Sorted the DataFrame by sequence_name and date_time to ensure chronological order within each participant/session, followed by resetting the index.
+- Data Quality Check: Checked for missing values using df.isnull().sum() (no nulls found) and printed head rows for each participant/group (grouped by sequence_name) to verify data integrity.
+- Label Handling: Mapped activity labels (e.g., "walking", "falling") to numerical values implicitly or explicitly for model compatibility (e.g., binary for falling vs. non-falling, or multi-class).
+- Feature Scaling: Applied StandardScaler from scikit-learn to normalize acceleration features (x, y, z) for consistent scaling across models.
+- One-Hot Encoding: Used OneHotEncoder from scikit-learn on categorical features like tag_id (sensor location) to create dummy variables, incorporating sensor-specific information into the feature set.
+- Sequence Grouping: Grouped data by sequence_name for participant-level analysis, enabling leave-one-group-out cross-validation (LeaveOneGroupOut from scikit-learn) to evaluate models on unseen participants and avoid data leakage.
+- Basic Feature Computation: Computed derived features like acceleration magnitude (e.g., sqrt(x^2 + y^2 + z^2))) to capture motion dynamics.
+
+<img width="869" height="504" alt="image" src="https://github.com/user-attachments/assets/c102bc89-7eec-46d1-8e89-de826f1c9b49" />
+
+
+**Distinctive Preprocessing For Random Forest + HMM:**
+- Windowing for Random Forest: Created sliding windows over the time-series data to extract statistical features per window, including mean, standard deviation, min, max, skewness, and kurtosis for x, y, z, and magnitude. This flattens sequences into tabular data suitable for Random Forest.
+- Sequence Preparation for HMM: Split data into sequences per sequence_name, using scaled x, y, z (or RF probabilities) as multivariate observations. Applied hmm.GaussianHMM from hmmlearn, fitting on sequence lengths.
+
+**Distinctive Preprocessing For Hidden Semi-Markov Model (HSMM):**
+- Duration Feature Addition: Engineered duration-related features, such as dwell times or state persistence probabilities, to model variable state durations unlike standard HMM, which assumes geometric distributions.
+- Extended Sequence Preparation: Similar to HMM, but augmented observations with duration vectors or parametric distributions (Poisson or explicit counts for state persistence). Sequences were padded or segmented to handle variable lengths, focusing on temporal dependencies beyond Markov assumptions.
+
 
 ---
 
