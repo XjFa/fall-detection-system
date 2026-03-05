@@ -95,14 +95,30 @@ project_root/
    - Softmax normalization for probability comparison
 
 3. **Random Forest (RF) + HMM Smoother**
+   - In the 1st stage, RF classifier processes each frame independently
+     
+   - The 32-dimentional feature vectors are turned into a probability distribution over 6 activity classes (falling, lying, on all fours, sitting, standing, walking)
+     
+   - In the 2nd stage, a Viterbi decoder uses the RF posterior probabilities as emission likelihoods inside a simple HMM
+     
+   - Transition matrix was learned by counting activity-to-activity transitions
+     
    - Random Forest directly learns the discriminative boundary P(activity | features)
      
    - Addresses the core limitation of pure generative HMM approaches of modelling P(features | activity)
+   
+   - RF handles the complex nonlinear boundary between activities while HMM enforces temporal coherence without any generative emission fitting
 
 4. **Hidden Semi-Markov Model (HSMM)**
    - Selected for fall detection
      
-   - Incorporates explicit duration modelling
+   - State duration is modeled with an explicit Poisson distribution per activity
+     
+   - Lambda parameter is esimated from the mean chunck length in training
+     
+   - During prediction, a segment-level Viterbi decoder scores each candidate segment by combining the emission log-likelihood from a Gaussian HMM with the duration log-likelihood under that activity's Poisson prior
+     
+   - The transition matrix adds a further constraint on which activity sequences are plausible 
 
 ---
 ## Detection Method
