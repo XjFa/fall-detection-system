@@ -264,5 +264,5 @@ The dashboard provides an interactive interface for exploring participant sensor
 This setup allows users to explore **ground truth vs. model predictions** interactively, making it easier to validate and analyze fall detection performance.
 
 <p align="center">
-  <img src="assets/demo.gif" width="700" alt="Fall Detection Dashboard Demo"/>
+  <img src="asset/demo.gif" width="700" alt="Fall Detection Dashboard Demo"/>
 </p>
