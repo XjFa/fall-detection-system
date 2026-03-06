@@ -21,21 +21,44 @@ The frontend provides an **interactive Streamlit dashboard** that performs slidi
 
 ## About the Dataset
 
-**Context:**  
-Data originates from a thesis on safer smart environments for independent living. It was collected from a **care-independent smart home** to detect falls among elderly participants.
+### Context
+This dataset originates from research on safer smart environments for independent living. It was collected to analyze human activity using **body-worn sensors**, with a focus on understanding movements and detecting falls in a controlled setting.
 
-**Content:**
-- **Sensor data:** Three-dimensional (`X`, `Y`, `Z`) acceleration from four body-worn sensors (chest, belt, left & right ankles)
-- **Labels:**  
-  - `0` → Normal activity  
-  - `1` → Fall event
-- **Structure:**  
-  - One CSV per participant  
-  - Training set: 20 participants (`data_1.csv`–`data_19.csv`)  
-  - Test set: 5 participants (`data_20.csv`–`data_24.csv`)  
-- **Note:** Timestamps removed to avoid temporal bias
+### Dataset Overview
+- **Participants:** 5 individuals  
+- **Repetitions:** Each participant performed the same scenario **five times**  
+- **Sensors:** Four body-worn tags per participant:
+  - `ANKLE_LEFT` → 010-000-024-033  
+  - `ANKLE_RIGHT` → 010-000-030-096  
+  - `CHEST` → 020-000-033-111  
+  - `BELT` → 020-000-032-221  
+- **Measurements:** 3D localization coordinates (`X`, `Y`, `Z`) for each sensor  
+- **Activities:** walking, falling, lying down, sitting down, standing up, on all fours, and others (11 total)  
+- **Instances:** 164,860  
+- **Features:** 8 (sequence name, tag ID, timestamp, date, X, Y, Z, activity label)  
+- **Missing values:** None  
 
-**Acknowledgements:**  
+### Data Structure
+- Each row corresponds to a **single sensor reading** at a specific timestamp.  
+- Sequence name identifies the participant and repetition: e.g., `A01` → Participant A, first scenario repetition.  
+- Tag ID identifies the sensor.  
+- `Activity` column is categorical with 11 possible activities.
+
+### Variable Summary
+
+| Column        | Description |
+|---------------|-------------|
+| Sequence Name | Participant & repetition (A01–E05) |
+| Tag ID        | Sensor identifier (ANKLE_LEFT, ANKLE_RIGHT, CHEST, BELT) |
+| Timestamp     | Unique numeric timestamp |
+| Date          | Format: `dd.MM.yyyy HH:mm:ss:SSS` |
+| X             | X-coordinate of the tag |
+| Y             | Y-coordinate of the tag |
+| Z             | Z-coordinate of the tag |
+| Activity      | Human activity label (walking, falling, lying, etc.) |
+
+
+### Acknowledgements
 Refactored from the [UCI Localization Data for Person Activity dataset](https://archive.ics.uci.edu/ml/datasets/Localization+Data+for+Person+Activity).  
 > B. Kaluza, V. Mirchevska, E. Dovgan, M. Lustrek, M. Gams, *An Agent-based Approach to Care in Independent Living*, International Joint Conference on Ambient Intelligence (AmI-10), Malaga, Spain, In press.
 
