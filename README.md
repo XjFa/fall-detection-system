@@ -151,8 +151,54 @@ project_root/
 
 
 ---
-## Exploratory Data Analysis
-(Under Construction..)
+## Exploratory Data Analysis  -- (UNDER CONSTRACTION...)
+### Acceleration Magnitude Distribution
+
+Acceleration magnitude summarizes the overall motion intensity captured by the wearable sensors. Examining its distribution helps identify differences in movement patterns across activities and sensor locations.
+
+<p align="center">
+  <img src="asset/acceleration_magnitude.png" width="650">
+</p>
+
+Key observations: 
+
+- Higher acceleration magnitudes typically correspond to more dynamic movements.
+- Lower values are associated with stationary or low-motion activities.
+- This feature is particularly useful for distinguishing potential fall events from normal activities.
+
+---
+
+### Activity Transition Patterns
+
+To understand how activities evolve over time, we computed transition probabilities between activities using a normalized transition matrix.
+
+<p align="center">
+  <img src="asset/activity_transitions.png" width="600">
+</p>
+
+Insights:
+
+- Certain activities exhibit strong self-transitions, indicating temporal persistence.
+- Some transitions are more likely than others, reflecting realistic behavioral sequences.
+- These patterns motivate the use of **sequence models such as Hidden Markov Models (HMM)**.
+
+---
+
+### Sensor Signal Over Time
+
+The following example shows raw accelerometer signals along the X, Y, and Z axes for a single sequence. Visualizing the signals helps reveal temporal dynamics and movement patterns captured by the sensors.
+
+<p align="center">
+  <img src="asset/sensor_signal.png" width="700">
+</p>
+
+Observations:
+
+- The three axes capture different directional components of motion.
+- Periods of stable activity show relatively smooth signals.
+- Sudden spikes or fluctuations can indicate abrupt movements.
+
+---
 
 
 ---
@@ -168,10 +214,10 @@ project_root/
 - HSMM maximizes safety-critical fall recall
 
 ## Interpretations
-1. **Baseline Hidden Markov Model**
+1. **Baseline Hidden Markov Model** -- (UNDER CONSTRACTION...)
 
 
-2. **Activity-Level 12D HMM Model**
+2. **Activity-Level 12D HMM Model** -- (UNDER CONSTRACTION...)
 
 
 3. **Random Forest (RF) + HMM Smoother**
@@ -194,10 +240,25 @@ project_root/
 
 ---
 
-## Deployment Strategy
-
+## Summary -- (UNDER CONSTRACTION...)
 - Use **HSMM** fall probability as **dedicated fall alert trigger**  
 - Use **RF+HMM Smoother** for general activity state estimation  
+
+
+
+
+
+
+---
+
+## Limitation and Future Improvement
+
+- **Enhanced sensors**: Integrate gyroscopes, pressure sensors, or ambient devices for richer motion data.
+
+- **Class imbalance**: Apply data augmentation or weighted losses to boost fall detection recall.
+
+- **Validation & interpretability**: Test on larger datasets and provide model explanations for trust and transparency.
+
 
 ---
 
@@ -233,6 +294,7 @@ python -m models.rf.train
 streamlit run app.py
 ```
 
+---
 ### Interact with the Fall Detection Dashboard
 
 The dashboard provides an interactive interface for exploring participant sensor sequences and visualizing fall detection results.
@@ -266,3 +328,5 @@ This setup allows users to explore **ground truth vs. model predictions** intera
 <p align="center">
   <img src="asset/demo.gif" width="700" alt="Fall Detection Dashboard Demo"/>
 </p>
+
+---

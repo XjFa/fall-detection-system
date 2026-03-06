@@ -84,7 +84,7 @@ def predict_rf_sequence(X_seq):
     X_scaled = rf_scaler.transform(X_seq)
     probs_all_classes = rf_model.predict_proba(X_scaled)  # (T, n_classes)
 
-    # Assume 'falling' class is labeled 1 in original encoding
+    
     if "falling" in rf_le.classes_:
         fall_idx = np.where(rf_le.classes_ == "falling")[0][0]
         fall_probs = probs_all_classes[:, fall_idx]
