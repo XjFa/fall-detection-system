@@ -96,7 +96,7 @@ project_root/
 
 ## Backend Models
 
-### 1. LSTM - Not in Dashboard
+### 1. LSTM 
 - Sequence-aware neural network
 - Binary classification: falling vs non-fall
 - Sigmoid probability output, optimized threshold
@@ -112,7 +112,7 @@ project_root/
 - Stage 2: HMM smooths RF predictions via Viterbi decoder  
 - Captures complex nonlinear boundaries + temporal coherence  
 
-### 4. Hidden Semi-Markov Model (HSMM)
+### 4. Hidden Semi-Markov Model (HSMM) - Not in Dashboard
 - Explicit Poisson duration per activity  
 - Segment-level Viterbi scoring  
 - Prioritizes high recall on fall events
