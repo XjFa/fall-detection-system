@@ -2,44 +2,41 @@
 
 ## Overview
 
-Falls are a leading cause of injury among elderly individuals living independently.
+Falls are a leading cause of injury among elderly individuals living independently.  
 
-This project implements a data-driven fall detection system using motion sensor data collected from a smart home environment.
+This project implements a **data-driven fall detection system** using motion sensor data collected from a smart home environment.  
 
-Instead of relying on a single classification model, the system compares two different sequence modeling approaches:
+Instead of relying on a single classification model, the system compares multiple sequence modeling approaches:
 
-**Hidden Markov Models (HMM)** – generative probabilistic model
+| Model | Type | Purpose |
+|-------|------|---------|
+| **LSTM (Long Short-Term Memory)** | Deep learning sequence model(Baseline) | Sequence-aware fall detection |
+| **Hidden Markov Model (HMM)** | Generative probabilistic | General activity modeling |
+| **Random Forest + HMM Smoother** | Ensemble | Frame-level classification + temporal smoothing |
+| **Hidden Semi-Markov Model (HSMM)** | Probabilistic with duration prior | Safety-critical fall detection |
 
-**LSTM (Long Short-Term Memory network)** – deep learning sequence model
-
-The frontend provides an interactive Streamlit dashboard that performs sliding-window fall detection, visualizing fall probability over time.
+The frontend provides an **interactive Streamlit dashboard** that performs sliding-window fall detection, visualizing fall probability over time.
 
 ---
 
 ## About the Dataset
 
 **Context:**  
-The dataset originates from a thesis focused on developing safer smart environments for independent living. It is collected from a **care-independent smart home** to detect falls among elderly people.
+Data originates from a thesis on safer smart environments for independent living. It was collected from a **care-independent smart home** to detect falls among elderly participants.
 
-**Content:**  
-- Each sample contains **three-dimensional sensor positions**: `X`, `Y`, `Z`.  
-- Four sensors were attached to the person’s **chest, belt, and ankles**. Their activity is captured via **one-hot encoded columns**:  
-  - `010-000-024-033`  
-  - `010-000-030-096`  
-  - `020-000-032-221`  
-  - `020-000-033-111`  
+**Content:**
+- **Sensor data:** Three-dimensional (`X`, `Y`, `Z`) acceleration from four body-worn sensors (chest, belt, left & right ankles)
 - **Labels:**  
-  - `0` → normal activity  
-  - `1` → fall event  
+  - `0` → Normal activity  
+  - `1` → Fall event
 - **Structure:**  
-  - Each CSV file corresponds to **one person**.  
-  - **Training set:** 20 persons (`data_1.csv` to `data_19.csv`)  
-  - **Test set:** 5 persons (`data_20.csv` to `data_24.csv`)  
-- **Note:** Timestamps were removed to avoid biased learning based on time sequences.
+  - One CSV per participant  
+  - Training set: 20 participants (`data_1.csv`–`data_19.csv`)  
+  - Test set: 5 participants (`data_20.csv`–`data_24.csv`)  
+- **Note:** Timestamps removed to avoid temporal bias
 
 **Acknowledgements:**  
-The dataset is a refactored version of the [UCI Localization Data for Person Activity dataset](https://archive.ics.uci.edu/ml/datasets/Localization+Data+for+Person+Activity). All rights belong to the original authors:
-
+Refactored from the [UCI Localization Data for Person Activity dataset](https://archive.ics.uci.edu/ml/datasets/Localization+Data+for+Person+Activity).  
 > B. Kaluza, V. Mirchevska, E. Dovgan, M. Lustrek, M. Gams, *An Agent-based Approach to Care in Independent Living*, International Joint Conference on Ambient Intelligence (AmI-10), Malaga, Spain, In press.
 
 ---
@@ -64,7 +61,9 @@ project_root/
 │   │   ├── __init__.py
 │   │   ├── model.py
 │   │   └── train.py
-│
+│   ├── rf/
+│   │   ├── __init__.py
+│   │   └── train.py
 ├── app.py
 ├── requirements.txt
 └── README.md
@@ -73,105 +72,82 @@ project_root/
 ## Data Preprocessing
 
 **General Preprocessing Steps For All Models:**
-- Data Loading: Loaded the dataset from "ConfLongDemo_JSI.txt" resulting in a DataFrame of shape (164860, 8).
-- Column Naming: Assigned descriptive column names: sequence_name (participant/session ID, e.g., A01–E05), tag_id (sensor ID), timestamp (numeric unique timestamp), date_time (formatted date), x (x-coordinate acceleration), y (y-coordinate acceleration), z (z-coordinate acceleration), and activity (label, e.g., "walking", "falling").
-- Type Conversions: Converted date_time to pandas datetime format using pd.to_datetime with format "%d.%m.%Y %H:%M:%S:%f". Converted x, y, and z columns to float type for numerical operations.
-- Sorting and Indexing: Sorted the DataFrame by sequence_name and date_time to ensure chronological order within each participant/session, followed by resetting the index.
-- Data Quality Check: Checked for missing values using df.isnull().sum() (no nulls found) and printed head rows for each participant/group (grouped by sequence_name) to verify data integrity.
-- Label Handling: Mapped activity labels (e.g., "walking", "falling") to numerical values implicitly or explicitly for model compatibility (e.g., binary for falling vs. non-falling, or multi-class).
-- Feature Scaling: Applied StandardScaler from scikit-learn to normalize acceleration features (x, y, z) for consistent scaling across models.
-- One-Hot Encoding: Used OneHotEncoder from scikit-learn on categorical features like tag_id (sensor location) to create dummy variables, incorporating sensor-specific information into the feature set.
-- Sequence Grouping: Grouped data by sequence_name for participant-level analysis, enabling leave-one-group-out cross-validation (LeaveOneGroupOut from scikit-learn) to evaluate models on unseen participants and avoid data leakage.
-- Basic Feature Computation: Computed derived features like acceleration magnitude (e.g., sqrt(x^2 + y^2 + z^2))) to capture motion dynamics.
+
+- Load dataset and assign descriptive column names  
+- Convert `date_time` to pandas datetime and acceleration columns to float  
+- Sort by `sequence_name` and `date_time` for chronological order  
+- Check for missing values and verify data integrity  
+- Map activity labels for binary or multi-class tasks  
+- Apply **StandardScaler** for feature normalization  
+- One-Hot encode categorical features (e.g., sensor ID)  
+- Group by `sequence_name` for participant-level analysis  
+- Compute derived features like **acceleration magnitude**
+
+**Distinctive Preprocessing:**
+- **Random Forest / HMM:** Sliding windows → statistical features per window (mean, std, min, max, skew, kurtosis)  
+- **HMM / HSMM:** Sequence-level multivariate observations, optionally augmented with duration features for HSMM  
+
+---
 
 <img width="869" height="504" alt="image" src="https://github.com/user-attachments/assets/c102bc89-7eec-46d1-8e89-de826f1c9b49" />
-
-
-**Distinctive Preprocessing For Random Forest + HMM:**
-- Windowing for Random Forest: Created sliding windows over the time-series data to extract statistical features per window, including mean, standard deviation, min, max, skewness, and kurtosis for x, y, z, and magnitude. This flattens sequences into tabular data suitable for Random Forest.
-- Sequence Preparation for HMM: Split data into sequences per sequence_name, using scaled x, y, z (or RF probabilities) as multivariate observations. Applied hmm.GaussianHMM from hmmlearn, fitting on sequence lengths.
-
-**Distinctive Preprocessing For Hidden Semi-Markov Model (HSMM):**
-- Duration Feature Addition: Engineered duration-related features, such as dwell times or state persistence probabilities, to model variable state durations unlike standard HMM, which assumes geometric distributions.
-- Extended Sequence Preparation: Similar to HMM, but augmented observations with duration vectors or parametric distributions (Poisson or explicit counts for state persistence). Sequences were padded or segmented to handle variable lengths, focusing on temporal dependencies beyond Markov assumptions.
 
 
 ---
 
 ## Backend Models
 
-1. **LSTM Model:**  
-   - Sequence-aware neural network
+### 1. LSTM - Not in Dashboard
+- Sequence-aware neural network
+- Binary classification: falling vs non-fall
+- Sigmoid probability output, optimized threshold
+- Trained on full participant sequences
 
-   - Binary classification: falling vs non-fall
+### 2. HMM
+- One Gaussian HMM per activity
+- Diagonal covariance
+- Likelihood comparison and softmax normalization
 
-   - Uses sigmoid probability output
+### 3. Random Forest + HMM Smoother
+- Stage 1: RF processes frame-level features → probability per activity  
+- Stage 2: HMM smooths RF predictions via Viterbi decoder  
+- Captures complex nonlinear boundaries + temporal coherence  
 
-   - Optimized decision threshold
-
-   - Trained using full participant sequences
-
-2. **HMM Model**  
-   - One Gaussian HMM per activity
-
-   - Diagonal covariance
-
-   - Sequence likelihood comparison
-
-   - Softmax normalization for probability comparison
-
-3. **Random Forest (RF) + HMM Smoother**
-   - In the 1st stage, RF classifier processes each frame independently
-     
-   - The 32-dimentional feature vectors are turned into a probability distribution over 6 activity classes (falling, lying, on all fours, sitting, standing, walking)
-     
-   - In the 2nd stage, a Viterbi decoder uses the RF posterior probabilities as emission likelihoods inside a simple HMM
-     
-   - Transition matrix was learned by counting activity-to-activity transitions
-     
-   - Random Forest directly learns the discriminative boundary P(activity | features)
-     
-   - Addresses the core limitation of pure generative HMM approaches of modelling P(features | activity)
-   
-   - RF handles the complex nonlinear boundary between activities while HMM enforces temporal coherence without any generative emission fitting
-
-4. **Hidden Semi-Markov Model (HSMM)**
-   - Selected for fall detection
-     
-   - State duration is modeled with an explicit Poisson distribution per activity
-     
-   - Lambda parameter is esimated from the mean chunck length in training
-     
-   - During prediction, a segment-level Viterbi decoder scores each candidate segment by combining the emission log-likelihood from a Gaussian HMM with the duration log-likelihood under that activity's Poisson prior
-     
-   - The transition matrix adds a further constraint on which activity sequences are plausible 
+### 4. Hidden Semi-Markov Model (HSMM)
+- Explicit Poisson duration per activity  
+- Segment-level Viterbi scoring  
+- Prioritizes high recall on fall events
 
 ---
 ## Detection Method
-Instead of classifying entire sequences, the system uses: **Sliding Window Detection**
 
-   - Window size (default: 100 timesteps)
-
-   - Step size (default: 50 timesteps)
-
-   - Each window is independently classified
-
-  -  Produces probability curve over time
-
-   This mimics real-world wearable fall detection systems.
+- **Sliding Window Detection:**  
+  - Default window size: 100 timesteps  
+  - Step size: 50 timesteps  
+- Classifies each window independently → produces probability curve over time  
+- Mimics real-world wearable fall detection
 
 
 ---
 ## Exploratory Data Analysis
-
-
+(Under Construction..)
 
 
 ---
-## Model Results & Interpretations
+## Model Results
+
+| Model | Overall Accuracy | Falling Recall | Falling F1 | Notes |
+|-------|----------------|----------------|------------|-------|
+| 12D HMM | 0.72 | 0.40 | 0.35 | Baseline HMM |
+| RF + HMM | 0.85 | 0.33 | 0.48 | Smooths RF predictions |
+| HSMM | 0.44 | 0.93 | 0.78 | High recall for falls, low overall accuracy |
+
+- RF+HMM achieves highest overall accuracy 
+- HSMM maximizes safety-critical fall recall
+
+## Interpretations
 1. **Baseline Hidden Markov Model**
 
-   
+
 2. **Activity-Level 12D HMM Model**
 
 
@@ -196,11 +172,9 @@ Instead of classifying entire sequences, the system uses: **Sliding Window Detec
 ---
 
 ## Deployment Strategy
-- Across all models tested, falling consistently had the lowest or near-lowest F1, which reflects the class's inherent difficulty: it is the rarest activity, has the shortest duration, and its sensor signature partially overlaps with transitional activities like standing up from lying
-- The RF + HMM and HSMM models represent a fundamental tradeoff: the prior optimises overall accuracy and is well-suited for general activity recognition, while the HSMM optimises fall-specific recall and is better suited as a safety-critical alerting system where missing a fall is more costly than a false alarm
-- We believe it's best to combine both for practical deployment: **use the HSMM's falling probability as a dedicated fall alert trigger while using the RF + HMM Smoother for overall activity state estimation**
 
-
+- Use **HSMM** fall probability as **dedicated fall alert trigger**  
+- Use **RF+HMM Smoother** for general activity state estimation  
 
 ---
 
@@ -208,12 +182,12 @@ Instead of classifying entire sequences, the system uses: **Sliding Window Detec
 
 ## Running the Application
 
-1. **Install dependencies:**
+**1. Install dependencies:**
 
 ```bash
 pip install -r requirements.txt
 ```
-2. **Models training (Run only once if not trained):**
+**2. Train models (only if not already trained):**
 
 - Train hmm model
 ```bash
@@ -225,28 +199,43 @@ python -m models.hmm.train
 python -m models.lstm.train
 ```
 
-3. **Run the Streamlit app:**
+- Train RF+HMM model
+```bash
+python -m models.rf.train
+```
+
+**3. Run the Streamlit app**
 
 ```bash
 streamlit run app.py
 ```
 
-4. **Interact with the animation:**
+### Interact with the Fall Detection Dashboard
 
-   The dashboard allows:
+The dashboard provides an interactive interface for exploring participant sensor sequences and visualizing fall detection results.
 
-      - Selecting participant sequences
+**Features:**
 
-      - Uploading custom CSV sensor data
+- **Select participant sequences:**  
+  Choose from sequences containing falls to analyze specific events.
 
-      - Adjusting window size and step size
+- **Run sliding window detection:**  
+  Execute LSTM, Random Forest, and HMM models on fixed-size sliding windows of sensor data.
 
-      - Running sliding window detection
+**Visualizations:**
 
-   Visualizing:
+- **Sensor readings over time:**  
+  View all accelerometer and gyroscope signals. Ground truth fall periods are marked with **red vertical lines**:  
+  - Solid line → Fall start  
+  - Dashed line → Fall end
 
-      - LSTM fall probability over time
+- **LSTM & Random Forest fall probability:**  
+  Window-level probabilities plotted as line charts. High-risk windows (predicted as falling) are highlighted in tables.
 
-      - Detected fall windows
+- **HMM activity predictions:**  
+  Model-predicted activity classes over time are displayed as line plots.
 
-      - HMM activity predictions
+- **Combined fall alerts:**  
+  Identify windows where **any model predicts a fall**, summarized in a table for quick review.
+
+This setup allows users to explore **ground truth vs. model predictions** interactively, making it easier to validate and analyze fall detection performance.
