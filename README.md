@@ -199,7 +199,7 @@ Key observations:
     | Non-fall (0)  | 1.00      | 0.99  | 0.99     | 161,887  |
     | Fall (1)      | 0.63      | 0.73  | 0.68     | 2,973    |
     | **Overall**   | -         | -     | 0.99     | 164,860  
-    |
+    
 
    - Achieved **high overall accuracy (0.987)** and **macro F1 score (0.84)**
 
@@ -228,7 +228,7 @@ Key observations:
       | Standing up from sitting on ground  | 0.39      | 0.41  | 0.40     | 2,848   |
       | Walking                             | 0.97      | 0.58  | 0.72     | 32,710  |
       | **Overall**                          | -         | -     | 0.37     | 164,860 |
-    |
+    
 
 
    - **Frame-level accuracy:** 0.54; **Macro F1:** 0.37  
