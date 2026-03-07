@@ -1,4 +1,6 @@
-# Smart Home Fall Detection for Elderly Safety (Data-Driven Simulation)
+<h1 align="center">📱 Smart Home Fall Detection for Elderly Safety</h1>
+<h3 align="center">Data-Driven Simulation</h3>
+<hr>
 
 
 ## Overview 
