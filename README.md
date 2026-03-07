@@ -162,9 +162,8 @@ Acceleration magnitude summarizes the overall motion intensity captured by the w
 
 Key observations: 
 
-- Higher acceleration magnitudes typically correspond to more dynamic movements.
-- Lower values are associated with stationary or low-motion activities.
-- This feature is particularly useful for distinguishing potential fall events from normal activities.
+- The ankers reading have higher acceleration magnitudes typically correspond to more dynamic movements.
+- The Chest and belt have Lower values are associated with stationary or low-motion activities.
 
 ---
 
@@ -194,7 +193,7 @@ The following example shows raw accelerometer signals along the X, Y, and Z axes
 
 Observations:
 
-- The three axes capture different directional components of motion.
+- The three axes capture different directional components of motion for the sample sequence A.
 - Periods of stable activity show relatively smooth signals.
 - Sudden spikes or fluctuations can indicate abrupt movements.
 
@@ -230,8 +229,10 @@ Observations:
    - Walking and sitting are classified with high reliability (F1 0.93 and 0.92 respectively), reflecting that these activities have distinctive, consistent sensor signatures across subjects
    - Falling remains the weakest class at F1 0.48, with recall of only 0.33 — meaning the model misses roughly two-thirds of actual fall events at the frame level, which is a critical limitation for a fall detection system where false negatives carry high safety cost
    - The precision-recall imbalance for falling (precision 0.86, recall 0.33) suggests the model is conservative: when it predicts a fall it is usually correct, but it fails to flag the majority of actual falls, likely because falls occupy very few frames relative to the total dataset.
+  
 
-4. **Hidden Semi-Markov Model**
+
+1. **Hidden Semi-Markov Model**
 <img width="606" height="327" alt="Screenshot 2026-03-03 080529" src="https://github.com/user-attachments/assets/3e1893e1-6a02-4fa4-927f-065b62e8bc00" />
 
    - Despite having a low overall accuracy of 0.44, the HSMM achieved the highest falling recall of 0.93 and falling F1 of 0.78 across all tested models — outperforming the RF + HMM Smoother on the most safety-critical class by a substantial margin
@@ -323,7 +324,8 @@ The dashboard provides an interactive interface for exploring participant sensor
 - **Combined fall alerts:**  
   Identify windows where **any model predicts a fall**, summarized in a table for quick review.
 
-This setup allows users to explore **ground truth vs. model predictions** interactively, making it easier to validate and analyze fall detection performance.
+The interface allows users to explore **ground truth vs. model predictions** interactively, making it easier to validate and analyze fall detection performance.
+
 
 <p align="center">
   <img src="asset/demo.gif" width="700" alt="Fall Detection Dashboard Demo"/>
