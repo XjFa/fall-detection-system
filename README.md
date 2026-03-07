@@ -1,6 +1,7 @@
 # Smart Home Fall Detection for Elderly Safety (Data-Driven Simulation)
 
-## Overview
+
+## Overview 
 
 Falls are a leading cause of injury among elderly individuals living independently.  
 
@@ -91,6 +92,51 @@ project_root/
 ├── requirements.txt
 └── README.md
 ```
+
+---
+## Exploratory Data Analysis 
+### Acceleration Magnitude Distribution
+
+Acceleration magnitude summarizes the overall motion intensity captured by the wearable sensors. Examining its distribution helps identify differences in movement patterns across activities and sensor locations.
+
+<p align="center">
+  <img src="asset/acceleration_magnitude.png" width="650">
+</p>
+
+Key observations:
+
+- The ankle readings have higher acceleration magnitudes, corresponding to more dynamic movements.
+- The chest and belt sensors show lower values, which are associated with stationary or low-motion activities.
+
+---
+
+### Activity Transition Patterns
+
+To understand how activities evolve over time, we computed transition probabilities between activities using a normalized transition matrix.
+
+<p align="center">
+  <img src="asset/activity_transitions.png" width="600">
+</p>
+
+Key observations:
+
+- Certain activities exhibit strong self-transitions, such as lying and sitting, indicating temporal persistence.
+- These patterns motivate the use of **sequence models such as Hidden Markov Models (HMMs)**.
+
+---
+
+### Sensor Signal Over Time
+
+The following example shows raw accelerometer signals along the X, Y, and Z axes for a single sequence A. Visualizing the signals helps reveal temporal dynamics and movement patterns captured by the sensors.
+
+<p align="center">
+  <img src="asset/sensor_signal.png" width="700">
+</p>
+
+Key observations:
+- Smooth signal segments indicate periods of stable activity, while sudden spikes may correspond to abrupt movements.
+
+
 ---
 ## Data Preprocessing
 
@@ -119,134 +165,128 @@ project_root/
 
 ## Backend Models
 
-### 1. LSTM 
-- Sequence-aware neural network
-- Binary classification: falling vs non-fall
-- Sigmoid probability output, optimized threshold
-- Trained on full participant sequences
+### 1. LSTM (Baseline)
+- Bidirectional sequence model for 12-dimensional motion features  
+- Binary classification: falling vs non-fall (frame-level)  
+- Sigmoid probability output with optimized decision threshold  
+- Trained with **class-weighted Binary Cross-Entropy** to address severe fall/non-fall imbalance  
 
-### 2. HMM
-- One Gaussian HMM per activity
-- Diagonal covariance
-- Likelihood comparison and softmax normalization
+### 2. 12D HMM
+- One Gaussian HMM trained per activity class  
+- Uses **full covariance matrices** to capture correlations across sensor axes  
+- Predicts activity via **log-likelihood comparison** and **softmax normalization**  
+- Works on **frame-level sequences** derived from sensor data  
 
 ### 3. Random Forest + HMM Smoother
-- Stage 1: RF processes frame-level features → probability per activity  
-- Stage 2: HMM smooths RF predictions via Viterbi decoder  
-- Captures complex nonlinear boundaries + temporal coherence  
+- Stage 1: RF predicts frame-level activity probabilities from sensor features  
+- Stage 2: HMM smooths RF predictions using the **Viterbi algorithm**  
+- Combines nonlinear frame-level classification with **temporal coherence**  
 
-### 4. Hidden Semi-Markov Model (HSMM) - Not in Dashboard
-- Explicit Poisson duration per activity  
-- Segment-level Viterbi scoring  
-- Prioritizes high recall on fall events
-
----
-## Detection Method
-
-- **Sliding Window Detection:**  
-  - Default window size: 100 timesteps  
-  - Step size: 50 timesteps  
-- Classifies each window independently → produces probability curve over time  
-- Mimics real-world wearable fall detection
-
-
----
-## Exploratory Data Analysis  -- (UNDER CONSTRACTION...)
-### Acceleration Magnitude Distribution
-
-Acceleration magnitude summarizes the overall motion intensity captured by the wearable sensors. Examining its distribution helps identify differences in movement patterns across activities and sensor locations.
-
-<p align="center">
-  <img src="asset/acceleration_magnitude.png" width="650">
-</p>
-
-Key observations: 
-
-- The ankers reading have higher acceleration magnitudes typically correspond to more dynamic movements.
-- The Chest and belt have Lower values are associated with stationary or low-motion activities.
-
----
-
-### Activity Transition Patterns
-
-To understand how activities evolve over time, we computed transition probabilities between activities using a normalized transition matrix.
-
-<p align="center">
-  <img src="asset/activity_transitions.png" width="600">
-</p>
-
-Insights:
-
-- Certain activities exhibit strong self-transitions, indicating temporal persistence.
-- Some transitions are more likely than others, reflecting realistic behavioral sequences.
-- These patterns motivate the use of **sequence models such as Hidden Markov Models (HMM)**.
-
----
-
-### Sensor Signal Over Time
-
-The following example shows raw accelerometer signals along the X, Y, and Z axes for a single sequence. Visualizing the signals helps reveal temporal dynamics and movement patterns captured by the sensors.
-
-<p align="center">
-  <img src="asset/sensor_signal.png" width="700">
-</p>
-
-Observations:
-
-- The three axes capture different directional components of motion for the sample sequence A.
-- Periods of stable activity show relatively smooth signals.
-- Sudden spikes or fluctuations can indicate abrupt movements.
-
----
+### 4. Hidden Semi-Markov Model (HSMM) – Not in Dashboard
+- Models **explicit segment durations** per activity using Poisson distributions  
+- Uses **segment-level Viterbi decoding**  
+- Prioritizes **high recall on fall events**, sacrificing overall accuracy for safety
 
 
 ---
 ## Model Results
 
-| Model | Overall Accuracy | Falling Recall | Falling F1 | Notes |
-|-------|----------------|----------------|------------|-------|
-| 12D HMM | 0.72 | 0.40 | 0.35 | Baseline HMM |
-| RF + HMM | 0.85 | 0.33 | 0.48 | Smooths RF predictions |
-| HSMM | 0.44 | 0.93 | 0.78 | High recall for falls, low overall accuracy |
+1. **Baseline LSMT** 
+   **LSTM (Weighted)**
+   
+    | Class         | Precision | Recall | F1-score | Support  |
+    |---------------|:---------:|:-----:|:--------:|:--------:|
+    | Non-fall (0)  | 1.00      | 0.99  | 0.99     | 161,887  |
+    | Fall (1)      | 0.63      | 0.73  | 0.68     | 2,973    |
+    | **Overall**   | -         | -     | 0.99     | 164,860  
+    |
 
-- RF+HMM achieves highest overall accuracy 
-- HSMM maximizes safety-critical fall recall
+   - Achieved **high overall accuracy (0.987)** and **macro F1 score (0.84)**
 
-## Interpretations
-1. **Baseline Hidden Markov Model** -- (UNDER CONSTRACTION...)
+   - **Class imbalance was explicitly addressed** using **class-weighted Binary Cross-Entropy loss**, giving higher penalty to missed fall events during training.
+
+   - The model achieved **fall detection performance of F1 = 0.68** with **recall = 0.73**, indicating it is able to capture many true fall events.
+
+   - However, the model is **highly biased toward the dominant non-fall class** because fall frames represent only a **very small fraction of the dataset**.
+
+   - As a result, the **extremely high overall accuracy is misleading**, and the model may **struggle to generalize to new subjects or real-world environments** where fall patterns and class distributions differ.
+
+--- 
+2. **Activity-Level 12D HMM Model** 
+
+      | Class                               | Precision | Recall | F1-score | Support |
+      |------------------------------------|:---------:|:-----:|:--------:|--------:|
+      | Falling                             | 0.10      | 0.39  | 0.16     | 2,973   |
+      | Lying                               | 0.67      | 0.69  | 0.68     | 54,480  |
+      | Lying down                          | 0.14      | 0.49  | 0.22     | 6,168   |
+      | On all fours                        | 0.18      | 0.45  | 0.26     | 5,210   |
+      | Sitting                             | 0.90      | 0.57  | 0.70     | 27,244  |
+      | Sitting down                         | 0.00      | 0.00  | 0.00     | 1,706   |
+      | Sitting on the ground               | 0.78      | 0.70  | 0.73     | 11,779  |
+      | Standing up from lying              | 0.15      | 0.10  | 0.12     | 18,361  |
+      | Standing up from sitting            | 0.12      | 0.03  | 0.05     | 1,381   |
+      | Standing up from sitting on ground  | 0.39      | 0.41  | 0.40     | 2,848   |
+      | Walking                             | 0.97      | 0.58  | 0.72     | 32,710  |
+      | **Overall**                          | -         | -     | 0.37     | 164,860 |
+    |
 
 
-2. **Activity-Level 12D HMM Model** -- (UNDER CONSTRACTION...)
-
-
-3. **Random Forest (RF) + HMM Smoother**
-<img width="604" height="382" alt="Screenshot 2026-03-03 080343" src="https://github.com/user-attachments/assets/3a785ecd-66a8-4905-b797-09d811c173db" />
-<img width="630" height="450" alt="Screenshot 2026-03-03 080356" src="https://github.com/user-attachments/assets/bf71e785-f12a-46ea-bb5a-d7d8fed2d7eb" />
-
-   - Achieved the highest overall accuracy of 0.85 and macro F1 of 0.74 across all tested models, outperforming the best previous pure HMM (12D model, 0.72 accuracy) by a meaningful margin.
-   - The HMM smoothing layer contributed a +0.02 accuracy gain over RF alone (0.828 → 0.847) by penalising physically implausible frame-to-frame transitions
-   - Confirms that temporal context adds value on top of frame-level classification
-   - Walking and sitting are classified with high reliability (F1 0.93 and 0.92 respectively), reflecting that these activities have distinctive, consistent sensor signatures across subjects
-   - Falling remains the weakest class at F1 0.48, with recall of only 0.33 — meaning the model misses roughly two-thirds of actual fall events at the frame level, which is a critical limitation for a fall detection system where false negatives carry high safety cost
-   - The precision-recall imbalance for falling (precision 0.86, recall 0.33) suggests the model is conservative: when it predicts a fall it is usually correct, but it fails to flag the majority of actual falls, likely because falls occupy very few frames relative to the total dataset.
-  
-
-
-1. **Hidden Semi-Markov Model**
-<img width="606" height="327" alt="Screenshot 2026-03-03 080529" src="https://github.com/user-attachments/assets/3e1893e1-6a02-4fa4-927f-065b62e8bc00" />
-
-   - Despite having a low overall accuracy of 0.44, the HSMM achieved the highest falling recall of 0.93 and falling F1 of 0.78 across all tested models — outperforming the RF + HMM Smoother on the most safety-critical class by a substantial margin
-   - This strength is directly attributable to the duration prior: the model penalises assigning "falling" to long, stable chunks, concentrating fall predictions on brief high-jerk segments where true falls occur
-   - The model's poor performance on other classes, such as lying (F1 0.00) and sitting (F1 0.00), indicates that the duration distributions for static activities overlap heavily, causing the HSMM to misclassify these consistently — a known failure mode when activity durations are variable across subjects
+   - **Frame-level accuracy:** 0.54; **Macro F1:** 0.37  
+   - Reliable classification for **walking, sitting, and lying**, but **falling is poorly detected**.  
+   - Model is affected by **class imbalance** and limited temporal modeling, limiting generalization to rare events.  
 
 ---
 
-## Summary -- (UNDER CONSTRACTION...)
-- Use **HSMM** fall probability as **dedicated fall alert trigger**  
-- Use **RF+HMM Smoother** for general activity state estimation  
+
+3. **Random Forest (RF) + HMM Smoother**
+
+<img width="604" height="382" alt="Screenshot 2026-03-03 080343" src="https://github.com/user-attachments/assets/3a785ecd-66a8-4905-b797-09d811c173db" />
+<img width="630" height="450" alt="Screenshot 2026-03-03 080356" src="https://github.com/user-attachments/assets/bf71e785-f12a-46ea-bb5a-d7d8fed2d7eb" />
+
+   - Achieved the **highest overall accuracy (0.85)** and **macro F1 score (0.74)** across all tested models, outperforming the best previous pure HMM (**12D model: 0.72 accuracy**) by a meaningful margin.
+
+   - The **HMM smoothing layer improved accuracy by +0.02** over the Random Forest alone (**0.828 → 0.847**) by penalizing physically implausible frame-to-frame transitions.
+
+   - These results confirm that **temporal context adds value** on top of frame-level classification.
+
+   - **Walking** and **sitting** are classified with high reliability (**F1 = 0.93** and **0.92**, respectively), reflecting their distinctive and consistent sensor signatures across subjects.
+
+   - **Falling remains the weakest class** (**F1 = 0.48**, **recall = 0.33**), meaning the model misses roughly **two-thirds of actual fall events** at the frame level. This represents a critical limitation for a fall detection system, where **false negatives carry a high safety cost**.
+
+   - The **precision–recall imbalance for falling** (**precision = 0.86**, **recall = 0.33**) suggests the model is **conservative**: when it predicts a fall it is usually correct, but it fails to flag the majority of actual falls. This is likely because falls occupy **very few frames relative to the total dataset**.
+---
+
+4. **Hidden Semi-Markov Model**
+<img width="606" height="327" alt="Screenshot 2026-03-03 080529" src="https://github.com/user-attachments/assets/3e1893e1-6a02-4fa4-927f-065b62e8bc00" />
+
+   - Despite a **low overall accuracy (0.44)**, the HSMM achieved the **highest falling recall (0.93)** and **falling F1 score (0.78)** across all tested models — outperforming the **RF + HMM smoother** on the most **safety-critical class** by a substantial margin.
+
+   - This strength is directly attributable to the **duration prior**: the model penalizes assigning **“falling” to long, stable segments**, concentrating fall predictions on **brief high-jerk segments** where true falls occur.
+
+   - The model performs poorly on other classes, such as **lying (F1 = 0.00)** and **sitting (F1 = 0.00)**, indicating that the **duration distributions for static activities overlap heavily**. As a result, the HSMM tends to **misclassify these activities consistently** — a known failure mode when **activity durations vary across subjects**.
+
+---
+
+## Summary 
 
 
+| Model           | Overall Accuracy | Falling Recall | Falling F1 | Notes |
+|-----------------|----------------|----------------|------------|-------|
+| LSTM (Weighted) | 0.99           | 0.73           | 0.68       | Binary model; extremely high overall accuracy but biased due to severe class imbalance |
+| 12D HMM         | 0.72           | 0.40           | 0.35       | Baseline HMM using all 12 sensor features; moderate overall performance |
+| RF + HMM        | 0.85           | 0.33           | 0.48       | Frame-level RF predictions smoothed by HMM; high multi-class accuracy |
+| HSMM            | 0.44           | 0.93           | 0.78       | Prioritizes fall recall for safety-critical detection; overall accuracy is low |
 
+- **LSTM achieves very high overall accuracy**, but this is largely driven by **severe class imbalance**, making the model **less reliable for unseen subjects or real-world falls**.  
+- **12D HMM provides a simple baseline**, with moderate performance across all activities and limited fall detection capability.  
+- **RF + HMM provides the best multi-class accuracy** while maintaining temporal consistency in predictions.  
+- **HSMM maximizes recall for falls**, prioritizing detection of rare but critical events over overall classification accuracy.
+
+
+### Potential Implementation
+
+- **Option 1:** Use **HSMM fall probability** as a **dedicated fall alert**, while leveraging **RF + HMM Smoother** for general activity state estimation.  
+- **Option 2:** Combine predictions from multiple models to create a **robust fall alert**, potentially with **custom logic**, though this may increase computational complexity.
 
 
 
@@ -254,12 +294,11 @@ Observations:
 
 ## Limitation and Future Improvement
 
-- **Enhanced sensors**: Integrate gyroscopes, pressure sensors, or ambient devices for richer motion data.
-
-- **Class imbalance**: Apply data augmentation or weighted losses to boost fall detection recall.
-
-- **Validation & interpretability**: Test on larger datasets and provide model explanations for trust and transparency.
-
+- **Enhanced sensors:** Add gyroscopes, pressure sensors, or ambient devices for richer motion data.  
+- **Class imbalance & bias:** LSTM favors non-fall frames; use data augmentation or class-weighted losses to improve fall recall.  
+- **Generalization & validation:** Test on larger, diverse datasets for robust real-world performance.  
+- **Interpretability:** Add explainability (e.g., SHAP, attention) to increase trust in predictions.  
+- **Multi-model approach:** Combine HSMM (high fall recall) and RF+HMM (multi-class accuracy) for a robust fall alert system.
 
 ---
 
