@@ -301,9 +301,29 @@ Key observations:
   <img src="asset/RFHMM_Normalized_ConfusionMatrix.png" width="700">
 </p>
 
+**Well-Classified Activities**
+
+- **Walking** is classified near-perfectly with a recall of 0.98, meaning the model correctly identifies 98% of all walking frames. Its sensor signature (rhythmic, periodic oscillation across all four body positions) is highly distinctive and consistent across subjects
+- **Sitting and lying** achieve 0.89 and 0.88 recall respectively, also well-classified. The low acceleration magnitude and stability across all sensors makes them easy to separate from dynamic activities
+
+
+**Problematic Activities**
+
+- **Falling has the lowest recall at 0.33**, meaning the model misses two-thirds of actual fall events. Misclassifications are spread across all other classes — walking (0.27), standing (0.18), lying (0.11), and sitting (0.12) — suggesting the model sees different phases of a fall and assigns each phase to whichever static or dynamic activity it most resembles at that frame. This may be a consequence of frame-level classification without duration awareness
+
+- Falling is confused with many classes, but no other class is significantly confused with falling (all off-diagonal entries in the falling column are 0.00 or very small). This means the model **rarely produces false fall alarms** but **very frequently misses true falls** — a precision-recall tradeoff that is the opposite of what a safety-critical fall detection system should aim for
+
 <p align="center">
   <img src="asset/RFHMM_Top20Features.png" width="700">
 </p>
+
+- **CHEST_z is the single most important feature by a large margin**, with a mean decrease in impurity of ~0.135 — more than double the next features. The vertical axis of the chest sensor captures postural orientation most directly, making it the strongest individual discriminator between upright activities (walking, standing) and horizontal ones (lying, falling)
+  
+- Chest and belt sensor dominate feature importance (CHEST_roll_mean, CHEST_x, BELT_z, BELT_x, CHEST_y, and BELT_y all appear in the top 7), confirming that **the torso-mounted sensors (chest and belt) collectively carry the most discriminative signal**. This is expected since trunk orientation changes most dramatically across activities
+
+- ANKLE_LEFT_roll_mean and ANKLE_RIGHT_roll_mean both rank higher than their raw axis counterparts. This indicates that **temporal smoothing adds more information for ankle sensors** than for chest/belt sensors, likely because ankle readings are noisier and the rolling mean reduces variance to expose the underlying activity state
+
+- Magnitude features, including mag_mean and CHEST_mag, ANKLE_RIGHT_mag, BELT_mag, ANKLE_LEFT_mag, all appear in the top 20. Magnitude is rotation-invariant, so it provides reliable signal regardless of how a tag is oriented on the body
 
   
 ---
@@ -320,7 +340,7 @@ Key observations:
     
   - For a safety applicatio, we would want to optimize **recall over precision** to catch more real falls, so this trade-off is currently the wrong way around.
     
-  - The remaining five classes tell a concerning story. Walking is predicted everywhere, lying and sitting are completely missed. This pattern suggests the model has learned that **""walking"" like acceleration magnitudes and jerks are a safe default**, while the low-movement activities are consistently outscored.
+  - The remaining five classes tell a concerning story. Walking is predicted everywhere, lying and sitting are completely missed. This pattern suggests the model has learned that **"walking" like acceleration magnitudes and jerks are a safe default**, while the low-movement activities are consistently outscored.
     
   - The poor performance of HSMM could be attributed to severe class imbalance and feature similarities among static activities. In a way, lying, sitting, and standing all produce low-magnitude, low-jerk signals. A richer feature set (e.g., frequency-domain features) would help separate these. 
 
