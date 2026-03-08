@@ -186,8 +186,12 @@ Key observations:
 - Compute derived features like **acceleration magnitude**
 
 **Distinctive Preprocessing:**
-- **Random Forest / HMM:** Sliding windows → statistical features per window (mean, std, min, max, skew, kurtosis)  
-- **HMM / HSMM:** Sequence-level multivariate observations, optionally augmented with duration features for HSMM  
+- **Random Forest / HMM:**
+  - Activities combined into 6 macro-activities (walking, falling, lying, sitting, standing, on all fours)
+  - Sliding windows → statistical features per window (mean, std, min, max, skew, kurtosis)  
+- **HMM / HSMM:**
+  - 6 macro-activities as in Random Forest + HMM  
+  - Sequence-level multivariate observations, optionally augmented with duration features for HSMM
 
 ---
 
@@ -213,12 +217,18 @@ Key observations:
 ### 3. Random Forest + HMM Smoother
 - Stage 1: RF predicts frame-level activity probabilities from sensor features  
 - Stage 2: HMM smooths RF predictions using the **Viterbi algorithm**  
-- Combines nonlinear frame-level classification with **temporal coherence**  
+- Combines nonlinear frame-level classification with **temporal coherence**
+- **Leave-One-Sequence-Out (LOSO)** training and evaluation where the full pipeline is rerun independently for each of the 25 folds (sequences) 
 
 ### 4. Hidden Semi-Markov Model (HSMM) – Not in Dashboard
-- Models **explicit segment durations** per activity using Poisson distributions  
-- Uses **segment-level Viterbi decoding**  
-- Prioritizes **high recall on fall events**, sacrificing overall accuracy for safety
+- Two levels: **Gaussian HMM** as an emission sub-model combined with an explicit **Poisson duration distribution**
+- Each frame is represented by an **8-dimensional feature vector** derived from 4-body worn sensors
+    - 4 magnitude features
+    - 4 jerk features
+- Per-activity Gaussian HMM to model each activity's internal dynamics
+- 6 x 6 activity-level transition matrix is estimated by counting chunck-to-chunck transitions with Laplace smoothing (no self-transitions)
+- Uses **segment-level Viterbi decoding**
+- **Leave-One-Sequence-Out (LOSO)** training and evaluation for 25 folds
 
 
 ---
@@ -299,13 +309,20 @@ Key observations:
 ---
 
 ### 4. Hidden Semi-Markov Model
-<img width="606" height="327" alt="Screenshot 2026-03-03 080529" src="https://github.com/user-attachments/assets/3e1893e1-6a02-4fa4-927f-065b62e8bc00" />
+<img width="661" height="444" alt="607eac9ad972cf3028ce0db01e1bc180" src="https://github.com/user-attachments/assets/645dd8b3-f4a1-46d0-af15-6fd4af274507" />
 
-  - Despite a **low overall accuracy (0.44)**, the HSMM achieved the **highest falling recall (0.93)** and **falling F1 score (0.78)** across all tested models — outperforming the **RF + HMM smoother** on the most **safety-critical class** by a substantial margin.
 
-  - This strength is directly attributable to the **duration prior**: the model penalizes assigning **“falling” to long, stable segments**, concentrating fall predictions on **brief high-jerk segments** where true falls occur.
-
-  - The model performs poorly on other classes, such as **lying (F1 = 0.00)** and **sitting (F1 = 0.00)**, indicating that the **duration distributions for static activities overlap heavily**. As a result, the HSMM tends to **misclassify these activities consistently** — a known failure mode when **activity durations vary across subjects**.
+  - The model performs **poorly overall**, with a macro F1 of **0.19** and overall accuracy of **21%**, which is barely above chance for a 6-class problem. However, the results are not uniform across classes.
+    
+  - The Falling Class is the **best performing class** in the model with a precision of 0.68, meaning relatively few false alarms, and recall of 0.40 which misses 60% of true falls.
+    
+  - Like the RF + HMM model, low recall is still the problem here. **The model is conservative**, reluctant to predict "falling" which gives decent precision but at the cost of too many missed events.
+    
+  - For a safety applicatio, we would want to optimize **recall over precision** to catch more real falls, so this trade-off is currently the wrong way around.
+    
+  - The remaining five classes tell a concerning story. Walking is predicted everywhere, lying and sitting are completely missed. This pattern suggests the model has learned that **""walking"" like acceleration magnitudes and jerks are a safe default**, while the low-movement activities are consistently outscored.
+    
+  - The poor performance of HSMM could be attributed to severe class imbalance and feature similarities among static activities. In a way, lying, sitting, and standing all produce low-magnitude, low-jerk signals. A richer feature set (e.g., frequency-domain features) would help separate these. 
 
 ---
 
@@ -323,9 +340,9 @@ Key observations:
 
 - **12D HMM** serves as a simple baseline using all 12 sensor features. It achieves **moderate overall performance (0.72)** but has **limited fall detection capability (recall 0.40, F1 0.35)**, reflecting the challenges of modeling rare events without explicit fall-focused mechanisms.
 
-- **RF + HMM (fall)** combines frame-level Random Forest predictions with HMM smoothing. This approach provides **the best multi-class accuracy (0.86)** and **temporal consistency**, though its fall detection performance remains modest (**recall 0.33, F1 0.48**).
+- **RF + HMM (fall)** combines frame-level Random Forest predictions with HMM smoothing. This approach provides **the best multi-class accuracy (0.85)** and **temporal consistency**, though its fall detection performance remains modest (**recall 0.33, F1 0.48**).
 
-- **HSMM (fall)** achieves **low overall accuracy (0.68)** and **moderate fall detection (recall 0.40, F1 0.50)**. While it incorporates **explicit temporal modeling to capture fall events**, its performance is **limited compared to other models**, reflecting the trade-off between fall sensitivity and overall accuracy.
+- **HSMM (fall)** results in **lowest overall accuracy (0.21)** and **moderate fall detection (recall 0.40, F1 0.50)**. While it incorporates **explicit temporal modeling to capture fall events**, its performance is **limited compared to other models**, reflecting the trade-off between fall sensitivity and overall accuracy.
 
 ### Potential Implementation
 
