@@ -203,16 +203,38 @@ Key observations:
 ## Backend Models
 
 ### 1. LSTM (Baseline)
-- Bidirectional sequence model for 12-dimensional motion features  
-- Binary classification: falling vs non-fall (frame-level)  
-- Sigmoid probability output with optimized decision threshold  
-- Trained with **class-weighted Binary Cross-Entropy** to address severe fall/non-fall imbalance  
+
+- **Bidirectional 2-layer LSTM** with hidden size \(128\), capturing temporal patterns in **12-dimensional motion features** for each frame sequence.
+
+- Sequence outputs \(h_t\) are fed into a **linear classifier**:  
+  \[
+  z_t = W h_t + b
+  \]  
+  producing **frame-level logits**.
+
+- **Sigmoid activation** converts logits to fall probabilities:  
+  \[
+  p_t = \sigma(z_t)
+  \]  
+  with an optimized **decision threshold (~0.94)** for detecting falls.
+
+- Trained using **class-weighted Binary Cross-Entropy with logits (BCEWithLogitsLoss)** and the **Adam optimizer**, with the positive class weight calculated per training fold to handle severe class imbalance.
 
 ### 2. 12D HMM
-- One Gaussian HMM trained per activity class  
-- Uses **full covariance matrices** to capture correlations across sensor axes  
-- Predicts activity via **log-likelihood comparison** and **softmax normalization**  
-- Works on **frame-level sequences** derived from sensor data  
+- **One Gaussian HMM per activity class** (\(a \in \{\text{falling, lying, sitting, standing, walking, on\_all\_fours}\}\)) trained on **12D motion features** \(X_t \in \mathbb{R}^{12}\), using sequence chunks of each activity.  
+
+- Each HMM models the **temporal dynamics** with **full covariance matrices** \(\Sigma\) and state transitions \(A\), fitting parameters \(\theta_a = \{\pi, A, \mu, \Sigma\}\) via the EM algorithm:  
+  \[
+  \theta_a^* = \arg\max_\theta \sum_{i=1}^{N_a} \log P(X^{(i)} \mid \theta)
+  \]  
+
+- Activity prediction is based on **normalized log-likelihoods** per HMM, converted to probabilities via **softmax**:  
+  \[
+  p(a \mid X) = \frac{\exp(\log P(X \mid \theta_a)/T)}{\sum_{a'} \exp(\log P(X \mid \theta_{a'})/T)}
+  \]  
+  where \(T\) is sequence length for normalization.  
+
+- Works on **frame-level sequences**, chunked by activity changes, and provides **falling probability** for each chunk to support downstream threshold-based detection.
 
 ### 3. Random Forest + HMM Smoother
 - Stage 1: RF predicts frame-level activity probabilities from sensor features  
@@ -386,9 +408,9 @@ Key observations:
 ---
 Sample Use
 ---
-### Multi-Model Fall Alert
+### 📱 Multi-Model Fall Alert (Option 1)
 
-For each sliding window of sensor data, three models produce fall-related prodictions. The final fall probability is computed using a **weighted ensemble**. The weights were chosen empirically based on model performance, giving higher influence to the LSTM due to its stronger fall detection capability while still incorporating complementary signals from the RF+HMM and 12D HMM models.:
+For each sliding window of sensor data, three models produce fall-related prodictions. The final fall probability is computed using a **weighted ensemble**. The weights were chosen empirically based on model performance, giving higher influence to the LSTM due to its stronger fall detection capability while still incorporating complementary signals from the RF+HMM and 12D HMM models:
 
 ```
 p_ensemble = 0.55 * p_LSTM
@@ -424,7 +446,7 @@ H --> I["Final Fall Alert"]
 I --> J["Streamlit Dashboard\nVisualization"]
 
 ```
-
+### Dashboard Demo
 <p align="center">
   <img src="asset/demo.gif" width="700" alt="Fall Detection Dashboard Demo"/>
 </p>
