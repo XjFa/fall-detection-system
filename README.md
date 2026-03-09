@@ -366,10 +366,11 @@ Key observations:
 
 ### Potential Implementation
 
-**Option 1:** Use **LSTM (Weighted)** as a **initial fall alert**, while leveraging **RF + HMM Smoother** for general activity state **modification**.
 
-**Option 2:** Combine predictions from multiple models to create a **more robust fall alert**, potentially with **custom logic**, though this may increase computational complexity.
+**Option 1:** Combine predictions from multiple models to create a **more robust fall alert**, potentially with **custom logic**, though this may increase computational complexity.
 
+
+**Option 2:** Use **LSTM (Weighted)** as a **initial fall alert**, while leveraging **RF + HMM Smoother** for general activity state **modification**.
 
 
 ---
@@ -381,6 +382,57 @@ Key observations:
 - **Generalization & validation:** Test on larger, diverse datasets for robust real-world performance.  
 - **Interpretability:** Add explainability (e.g., SHAP, attention) to increase trust in predictions.  
 - **Multi-model approach:** Combine HSMM (high fall recall) and RF+HMM (multi-class accuracy) for a robust fall alert system.
+
+---
+Sample Use
+---
+### Multi-Model Fall Alert
+
+For each sliding window of sensor data, three models produce fall-related probabilities: an **LSTM model** that captures temporal motion patterns, a **Random Forest model with HMM smoothing** that aggregates frame-level predictions into a window-level fall probability, and a **12D HMM baseline** that estimates the likelihood of each activity class from the full sensor feature set. Let \(p_{LSTM}\), \(p_{RF}\), and \(p_{HMM}\) denote the fall probabilities produced by these models for a given window.
+
+The final fall probability is computed using a **weighted ensemble**:
+
+\[
+p_{ensemble} = 0.55 \cdot p_{LSTM} + 0.30 \cdot p_{RF} + 0.15 \cdot p_{HMM}
+\]
+
+A fall alert is triggered using a threshold decision rule:
+
+\[
+\text{prediction} =
+\begin{cases}
+\text{falling} & \text{if } p_{ensemble} > 0.5 \\
+\text{non-fall} & \text{otherwise}
+\end{cases}
+\]
+
+This weighted combination allows the system to leverage the **temporal modeling strength of the LSTM**, the **stable activity predictions of RF+HMM**, and the **probabilistic baseline provided by the HMM**, resulting in a more robust fall detection signal.
+
+```mermaid
+flowchart LR
+    %% Sensor input
+    A[Wearable Sensors<br>(Ankle L/R, Belt, Chest)] --> B[Sensor Data Stream]
+    B --> C[Preprocessing Pipeline]
+    C --> D[Sliding Window Segmentation<br>(Window=100, Step=50)]
+
+    %% Models
+    D --> E[LSTM Model<br>(Fall Probability)]
+    D --> F[RF + HMM Smoother]
+    D --> G[12D HMM Model<br>(Baseline)]
+
+    %% Ensemble
+    E --> H[Ensemble Fall Decision]
+    F --> H
+    G --> H
+
+    %% Alert and Dashboard
+    H --> I[Final Fall Alert]
+    I --> J[Streamlit Dashboard<br>Visualization]
+```
+
+<p align="center">
+  <img src="asset/demo.gif" width="700" alt="Fall Detection Dashboard Demo"/>
+</p>
 
 ---
 
@@ -442,14 +494,9 @@ The dashboard provides an interactive interface for exploring participant sensor
 - **HMM activity predictions:**  
   Model-predicted activity classes over time are displayed as line plots.
 
-- **Combined fall alerts:**  
+- **Essembled fall alerts:**  
   Identify windows where **any model predicts a fall**, summarized in a table for quick review.
 
 The interface allows users to explore **ground truth vs. model predictions** interactively, making it easier to validate and analyze fall detection performance.
 
 
-<p align="center">
-  <img src="asset/demo.gif" width="700" alt="Fall Detection Dashboard Demo"/>
-</p>
-
----

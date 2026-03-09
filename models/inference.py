@@ -103,13 +103,8 @@ def predict_rf_sequence(X_seq):
 def predict_all(X_seq):
     """
     Predict using LSTM, HMM, and RF for a single sequence.
-
-    Parameters:
-        X_seq: numpy array of shape (T, 12) or full 32-feature array
-
-    Returns:
-        dict
     """
+
     if not isinstance(X_seq, np.ndarray):
         X_seq = np.array(X_seq)
 
@@ -127,13 +122,42 @@ def predict_all(X_seq):
     # -------- HMM --------
     hmm_pred, hmm_probs = predict_hmm_sequence(X_seq)
 
+    # Convert HMM output to fall probability
+    hmm_fall_prob = hmm_probs.get("falling", 0.0)
+
     # -------- RF --------
     rf_pred, rf_prob = predict_rf_sequence(X_seq)
 
+    # -------- Weighted Ensemble --------
+    w_lstm = 0.55
+    w_rf = 0.30
+    w_hmm = 0.15
+
+    ensemble_prob = (
+        w_lstm * lstm_mean_prob +
+        w_rf * rf_prob +
+        w_hmm * hmm_fall_prob
+    )
+
+    ensemble_pred = "falling" if ensemble_prob > 0.5 else "non-fall"
+
     return {
-        "lstm": {"prediction": lstm_pred, "fall_probability": lstm_mean_prob},
-        "hmm": {"prediction": hmm_pred, "probabilities": hmm_probs},
-        "rf": {"prediction": rf_pred, "fall_probability": rf_prob}
+        "lstm": {
+            "prediction": lstm_pred,
+            "fall_probability": lstm_mean_prob
+        },
+        "rf": {
+            "prediction": rf_pred,
+            "fall_probability": rf_prob
+        },
+        "hmm": {
+            "prediction": hmm_pred,
+            "probabilities": hmm_probs
+        },
+        "ensemble": {
+            "prediction": ensemble_pred,
+            "fall_probability": ensemble_prob
+        }
     }
 
 
