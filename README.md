@@ -388,46 +388,41 @@ Sample Use
 ---
 ### Multi-Model Fall Alert
 
-For each sliding window of sensor data, three models produce fall-related probabilities: an **LSTM model** that captures temporal motion patterns, a **Random Forest model with HMM smoothing** that aggregates frame-level predictions into a window-level fall probability, and a **12D HMM baseline** that estimates the likelihood of each activity class from the full sensor feature set. Let \(p_{LSTM}\), \(p_{RF}\), and \(p_{HMM}\) denote the fall probabilities produced by these models for a given window.
+For each sliding window of sensor data, three models produce fall-related prodictions. The final fall probability is computed using a **weighted ensemble**. The weights were chosen empirically based on model performance, giving higher influence to the LSTM due to its stronger fall detection capability while still incorporating complementary signals from the RF+HMM and 12D HMM models.:
 
-The final fall probability is computed using a **weighted ensemble**:
-
-\[
-p_{ensemble} = 0.55 \cdot p_{LSTM} + 0.30 \cdot p_{RF} + 0.15 \cdot p_{HMM}
-\]
+```
+p_ensemble = 0.55 * p_LSTM
+           + 0.30 * p_RF
+           + 0.15 * p_HMM
+```
 
 A fall alert is triggered using a threshold decision rule:
 
-\[
-\text{prediction} =
-\begin{cases}
-\text{falling} & \text{if } p_{ensemble} > 0.5 \\
-\text{non-fall} & \text{otherwise}
-\end{cases}
-\]
-
-This weighted combination allows the system to leverage the **temporal modeling strength of the LSTM**, the **stable activity predictions of RF+HMM**, and the **probabilistic baseline provided by the HMM**, resulting in a more robust fall detection signal.
+```
+if p_ensemble > 0.5:
+    prediction = "falling"
+else:
+    prediction = "non-fall"
+```
 
 ```mermaid
 flowchart LR
-    %% Sensor input
-    A[Wearable Sensors<br>(Ankle L/R, Belt, Chest)] --> B[Sensor Data Stream]
-    B --> C[Preprocessing Pipeline]
-    C --> D[Sliding Window Segmentation<br>(Window=100, Step=50)]
 
-    %% Models
-    D --> E[LSTM Model<br>(Fall Probability)]
-    D --> F[RF + HMM Smoother]
-    D --> G[12D HMM Model<br>(Baseline)]
+A["Wearable Sensors\nAnkle L/R, Belt, Chest"] --> B["Sensor Data Stream"]
+B --> C["Preprocessing Pipeline"]
+C --> D["Sliding Window Segmentation\nWindow=100, Step=50"]
 
-    %% Ensemble
-    E --> H[Ensemble Fall Decision]
-    F --> H
-    G --> H
+D --> E["LSTM Model\nFall Probability"]
+D --> F["RF + HMM Smoother"]
+D --> G["12D HMM Model\nBaseline"]
 
-    %% Alert and Dashboard
-    H --> I[Final Fall Alert]
-    I --> J[Streamlit Dashboard<br>Visualization]
+E --> H["Ensemble Fall Decision"]
+F --> H
+G --> H
+
+H --> I["Final Fall Alert"]
+I --> J["Streamlit Dashboard\nVisualization"]
+
 ```
 
 <p align="center">
