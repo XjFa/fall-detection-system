@@ -365,7 +365,7 @@ Key observations:
 | LSTM (Weighted) | 0.99           | 0.73           | 0.68       | Binary model; highest overall accuracy but biased on falling due to severe class imbalance |
 | 12D HMM         | 0.72           | 0.40           | 0.35       | Baseline HMM using all 12 sensor features; moderate overall performance |
 | RF + HMM (fall)        | 0.86           | 0.33           | 0.48       | Frame-level RF predictions smoothed by HMM; high multi-class accuracy |
-| HSMM (fall)            | 0.68           | 0.40           | 0.50       | Temporal model focused on fall events; moderate fall detection, lower overall accuracy
+| HSMM (fall)            | 0.21           | 0.40           | 0.50       | Temporal model focused on fall events; moderate fall detection, lower overall accuracy
 
 - **LSTM (Weighted)** achieves **very high overall accuracy (0.99)**, but this is largely driven by the **dominant non-fall class**. While it captures many fall events (**recall 0.73, F1 0.68**), the model is **less reliable for unseen subjects or real-world falls**.
 
