@@ -117,7 +117,7 @@ Key observations:
 To understand how activities evolve over time, we computed transition probabilities between activities using a normalized transition matrix.
 
 <p align="center">
-  <img src="asset/activity_transitions.png" width="600">
+  <img src="asset/activity_transitions.png" width="800">
 </p>
 
 Key observations:
@@ -216,14 +216,13 @@ Key observations:
 
 ### 2. 12D HMM
 
-- **One Gaussian HMM per activity class** (`falling`, `lying`, `sitting`, `standing`, `walking`, `on_all_fours`) trained on **12D motion features** `X_t` (12-dimensional), using sequence chunks of each activity.
+- **One Gaussian HMM per activity class** (`falling`, `lying`, `sitting`, `standing`, `walking`, `on_all_fours`) trained on **12D motion features** from four body sensors (`ANKLE_LEFT`, `ANKLE_RIGHT`, `BELT`, `CHEST`).
 
-- Each HMM models the **temporal dynamics** with **full covariance matrices** `Σ` and state transitions `A`, fitting parameters `θ_a = {π, A, μ, Σ}` via the EM algorithm:  `θ_a* = argmax_θ Σ_i log P(X^(i) | θ)`
+- **Activity sequences are split into chunks** at label changes; features are **standardized** before training. Each HMM has **3 hidden states with full covariance matrices** to model temporal dynamics.
 
-- Activity prediction is based on **normalized log-likelihoods** per HMM, converted to probabilities via **softmax**:  `p(a | X) = exp(log P(X | θ_a) / T) / Σ_a' exp(log P(X | θ_a') / T)`  
-  where `T` is the sequence length for normalization.
+- **Chunk-level predictions** are computed using **length-normalized log-likelihoods**, converted to probabilities via **softmax**. The predicted activity is the class with the highest probability.
 
-- Works on **frame-level sequences**, chunked by activity changes, and provides **falling probability** for each chunk to support downstream threshold-based detection.
+- Predictions are **expanded to frame-level**, providing a **falling probability per frame** for threshold-based detection and evaluation with frame-level accuracy and macro F1-score.
 
 ### 3. Random Forest + HMM Smoother
 - Stage 1: RF predicts frame-level activity probabilities from sensor features  
@@ -260,29 +259,30 @@ Key observations:
 
   - However, the model is **highly biased toward the dominant non-fall class** because fall frames represent only a **very small fraction of the dataset**.
 
-  - As a result, the **extremely high overall accuracy is misleading**, and the model may **struggle to generalize to new subjects or real-world environments** where fall patterns and class distributions differ.
+  - As a result, the **extremely high overall accuracy could be misleading**, and the model may **struggle to generalize to new subjects or real-world environments** where fall patterns and class distributions differ.
 
 --- 
 ### 2. Activity-Level 12D HMM Model
 
-| Class                               | Precision | Recall | F1-score | Support |
-|------------------------------------|:---------:|:-----:|:--------:|--------:|
-| Falling                             | 0.10      | 0.39  | 0.16     | 2,973   |
-| Lying                               | 0.67      | 0.69  | 0.68     | 54,480  |
-| Lying down                          | 0.14      | 0.49  | 0.22     | 6,168   |
-| On all fours                        | 0.18      | 0.45  | 0.26     | 5,210   |
-| Sitting                             | 0.90      | 0.57  | 0.70     | 27,244  |
-| Sitting down                        | 0.00      | 0.00  | 0.00     | 1,706   |
-| Sitting on the ground               | 0.78      | 0.70  | 0.73     | 11,779  |
-| Standing up from lying               | 0.15      | 0.10  | 0.12     | 18,361  |
-| Standing up from sitting             | 0.12      | 0.03  | 0.05     | 1,381   |
-| Standing up from sitting on ground  | 0.39      | 0.41  | 0.40     | 2,848   |
-| Walking                             | 0.97      | 0.58  | 0.72     | 32,710  |
-| **Overall**                          | -         | -     | 0.37     | 164,860 |
 
-  - **Frame-level accuracy:** 0.54; **Macro F1:** 0.37  
-  - Reliable classification for **walking, sitting, and lying**, but **falling is poorly detected**.  
-  - Model is affected by **class imbalance** and limited temporal modeling, limiting generalization to rare events.  
+## Classification Report
+
+| Class        | Precision | Recall | F1-score | Support |
+|--------------|:---------:|:------:|:--------:|--------:|
+| Falling      | 0.10      | 0.29   | 0.15     | 2,973  |
+| Lying        | 0.63      | 0.51   | 0.56     | 60,648 |
+| On all fours | 0.00      | 0.00   | 0.00     | 5,210  |
+| Sitting      | 0.40      | 0.47   | 0.43     | 40,729 |
+| Standing     | 0.16      | 0.30   | 0.20     | 22,590 |
+| Walking      | 0.69      | 0.31   | 0.43     | 32,710 |
+**Accuracy:** 0.413  
+**Macro Avg F1:** 0.296  
+**Weighted Avg F1:** 0.43  
+ 
+- Better-performing in **walking**, **lying** (moderate).  
+- Poorly detected **falling, standing, and transitional activities** (e.g., on all fours).  
+- Performance is limited by **class imbalance** and **rare-event sequences**, affecting generalization to infrequent motions.
+
 
 
 ---
@@ -290,9 +290,10 @@ Key observations:
 
 ### 3. Random Forest (RF) + HMM Smoother
 
-  <img width="604" height="382" alt="Screenshot 2026-03-03 080343" src="https://github.com/user-attachments/assets/3a785ecd-66a8-4905-b797-09d811c173db" />
-  <img width="630" height="450" alt="Screenshot 2026-03-03 080356" src="https://github.com/user-attachments/assets/bf71e785-f12a-46ea-bb5a-d7d8fed2d7eb" />
 
+<p align="center">
+  <img src="asset/RFHMM_ConfusionMatrix.png" width="650">
+</p>
 
 
 
@@ -340,7 +341,10 @@ Key observations:
 ---
 
 ### 4. Hidden Semi-Markov Model
-<img width="661" height="444" alt="607eac9ad972cf3028ce0db01e1bc180" src="https://github.com/user-attachments/assets/645dd8b3-f4a1-46d0-af15-6fd4af274507" />
+<p align="center">
+  <img src="asset/hsmm_ConfusionMatrix.png" width="700">
+</p>
+
 
 
   - The model performs **poorly overall**, with a macro F1 of **0.19** and overall accuracy of **21%**, which is barely above chance for a 6-class problem. However, the results are not uniform across classes.
@@ -363,17 +367,17 @@ Key observations:
 | Model           | Overall Accuracy | Falling Recall | Falling F1 | Notes |
 |-----------------|----------------|----------------|------------|-------|
 | LSTM (Weighted) | 0.99           | 0.73           | 0.68       | Binary model; highest overall accuracy but biased on falling due to severe class imbalance |
-| 12D HMM         | 0.72           | 0.40           | 0.35       | Baseline HMM using all 12 sensor features; moderate overall performance |
+| 12D HMM (fall)        | 0.10           | 0.29           | 0.15       | Baseline HMM using all 12 sensor features; lowest overall performance |
 | RF + HMM (fall)        | 0.86           | 0.33           | 0.48       | Frame-level RF predictions smoothed by HMM; high multi-class accuracy |
 | HSMM (fall)            | 0.21           | 0.40           | 0.50       | Temporal model focused on fall events; moderate fall detection, lower overall accuracy
 
-- **LSTM (Weighted)** achieves **very high overall accuracy (0.99)**, but this is largely driven by the **dominant non-fall class**. While it captures many fall events (**recall 0.73, F1 0.68**), the model is **less reliable for unseen subjects or real-world falls**.
+- **LSTM (Weighted)** achieves **very high overall accuracy (0.99)**, but this is largely driven by the **dominant non-fall class**. While it captures many fall events (**recall 0.73, F1 0.68**), the model is **less reliable for unseen subjects or real-world falls** but can serve as premilary fall trigger
 
-- **12D HMM** serves as a simple baseline using all 12 sensor features. It achieves **moderate overall performance (0.72)** but has **limited fall detection capability (recall 0.40, F1 0.35)**, reflecting the challenges of modeling rare events without explicit fall-focused mechanisms.
+- **12D HMM** uses all 12 sensor features as a baseline and achieves **low frame-level performance (accuracy 0.41, macro F1 0.30)**. It detects common activities like sitting, walking, and lying moderately well but struggles with rare or transitional events such as falling and being on all fours.
 
 - **RF + HMM (fall)** combines frame-level Random Forest predictions with HMM smoothing. This approach provides **the best multi-class accuracy (0.85)** and **temporal consistency**, though its fall detection performance remains modest (**recall 0.33, F1 0.48**).
 
-- **HSMM (fall)** results in **lowest overall accuracy (0.21)** and **moderate fall detection (recall 0.40, F1 0.50)**. While it incorporates **explicit temporal modeling to capture fall events**, its performance is **limited compared to other models**, reflecting the trade-off between fall sensitivity and overall accuracy.
+- **HSMM (fall)** results in **low overall accuracy (0.21)** and **moderate fall detection (recall 0.40, F1 0.50)**. While it incorporates **explicit temporal modeling to capture fall events**, its performance is **limited compared to other models**, reflecting the trade-off between fall sensitivity and overall accuracy.
 
 ### Potential Implementation
 
@@ -397,7 +401,7 @@ Key observations:
 ---
 Sample Use
 ---
-### 📱 Multi-Model Fall Alert (Option 1)
+### 📱 Multi-Model Fall Alert
 
 For each sliding window of sensor data, three models produce fall-related prodictions. The final fall probability is computed using a **weighted ensemble**. The weights were chosen empirically based on model performance, giving higher influence to the LSTM due to its stronger fall detection capability while still incorporating complementary signals from the RF+HMM and 12D HMM models:
 
