@@ -342,7 +342,7 @@ Key observations:
 
 ### 4. Hidden Semi-Markov Model
 <p align="center">
-  <img src="asset/hsmm_ConfusionMatrix.png" width="700">
+  <img src="asset/HSMM_ConfusionMatrix.png" width="700">
 </p>
 
 
