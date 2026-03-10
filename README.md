@@ -206,11 +206,9 @@ Key observations:
 
 - **Bidirectional 2-layer LSTM** with hidden size `128`, capturing temporal patterns in **12-dimensional motion features** for each frame sequence.
 
-- Sequence outputs `h_t` are fed into a **linear classifier**:  `z_t = W * h_t + b`  
-  producing **frame-level logits**.
+- Sequence outputs `h_t` are fed into a **linear classifier**:  `z_t = W * h_t + b`  producing **frame-level logits**.
 
-- **Sigmoid activation** converts logits to fall probabilities:  `p_t = 1 / (1 + exp(-z_t))`  
-  with an optimized **decision threshold (~0.94)** for detecting falls.
+- **Sigmoid activation** converts logits to fall probabilities:  `p_t = 1 / (1 + exp(-z_t))`  with an optimized **decision threshold (~0.94)** for detecting falls.
 
 - Trained using **class-weighted Binary Cross-Entropy with logits (BCEWithLogitsLoss)** and the **Adam optimizer**, with the positive class weight calculated per training fold to handle severe class imbalance.
 
@@ -275,9 +273,8 @@ Key observations:
 | Sitting      | 0.40      | 0.47   | 0.43     | 40,729 |
 | Standing     | 0.16      | 0.30   | 0.20     | 22,590 |
 | Walking      | 0.69      | 0.31   | 0.43     | 32,710 |
-**Accuracy:** 0.413  
-**Macro Avg F1:** 0.296  
-**Weighted Avg F1:** 0.43  
+
+**Accuracy:** 0.413  | **Macro Avg F1:** 0.296  | **Weighted Avg F1:** 0.43  
  
 - Better-performing in **walking**, **lying** (moderate).  
 - Poorly detected **falling, standing, and transitional activities** (e.g., on all fours).  
