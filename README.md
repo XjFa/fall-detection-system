@@ -263,8 +263,6 @@ Key observations:
 ### 2. Activity-Level 12D HMM Model
 
 
-## Classification Report
-
 | Class        | Precision | Recall | F1-score | Support |
 |--------------|:---------:|:------:|:--------:|--------:|
 | Falling      | 0.10      | 0.29   | 0.15     | 2,973  |
@@ -310,13 +308,13 @@ Key observations:
   <img src="asset/RFHMM_Normalized_ConfusionMatrix.png" width="700">
 </p>
 
-**Well-Classified Activities**
+**Well-Classified Activities:**
 
 - **Walking** is classified near-perfectly with a recall of 0.98, meaning the model correctly identifies 98% of all walking frames. Its sensor signature (rhythmic, periodic oscillation across all four body positions) is highly distinctive and consistent across subjects
 - **Sitting and lying** achieve 0.89 and 0.88 recall respectively, also well-classified. The low acceleration magnitude and stability across all sensors makes them easy to separate from dynamic activities
 
 
-**Problematic Activities**
+**Problematic Activities:**
 
 - **Falling has the lowest recall at 0.33**, meaning the model misses two-thirds of actual fall events. Misclassifications are spread across all other classes — walking (0.27), standing (0.18), lying (0.11), and sitting (0.12) — suggesting the model sees different phases of a fall and assigns each phase to whichever static or dynamic activity it most resembles at that frame. This may be a consequence of frame-level classification without duration awareness
 
